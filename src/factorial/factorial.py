@@ -40,4 +40,4 @@ else:
     start = end = int(firstNum)
 
 for n in range(start, end + 1):
-    print(f"Factorial {n}! es {factorial(n)}")
+    print(f"Factorial {n}! es {factorial(n)}") #concluido el codigo de factorial.py
