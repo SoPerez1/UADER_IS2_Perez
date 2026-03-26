@@ -28,11 +28,14 @@ if "-" in firstNum:
     part = firstNum.split("-")
     
     if part[0] == "":
-        start, end = 1, int(part[1])
+        start = 1
+        end = int(part[1])
     elif part[1] == "": 
-        start, end = int(part[0]), 60
+        start = int(part[0])
+        end = 60
     else: 
-        start, end = int(part[0]), int(part[1])
+        start = int(part[0])
+        end = int(part[1])
 else:
     start = end = int(firstNum)
 
