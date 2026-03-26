@@ -6,13 +6,12 @@
 #* Creative commons                                                        *
 #*-------------------------------------------------------------------------*
 import sys
+
 def factorial(num): 
     if num < 0: 
-        print("Factorial de un número negativo no existe")
-        return 0
+        return "No existe"
     elif num == 0: 
         return 1
-        
     else: 
         fact = 1
         while(num > 1): 
@@ -21,8 +20,21 @@ def factorial(num):
         return fact 
 
 if len(sys.argv) < 2:
-   print("Debe informar un número!")
-   sys.exit()
-num=int(sys.argv[1])
-print("Factorial ",num,"! es ", factorial(num)) 
+    firstNum = input("Ingrese el número o rango (ej: 4-8, -10, 5-): ")
+else:
+    firstNum = sys.argv[1]
 
+if "-" in firstNum:
+    part = firstNum.split("-")
+    
+    if part[0] == "":
+        start, end = 1, int(part[1])
+    elif part[1] == "": 
+        start, end = int(part[0]), 60
+    else: 
+        start, end = int(part[0]), int(part[1])
+else:
+    start = end = int(firstNum)
+
+for n in range(start, end + 1):
+    print(f"Factorial {n}! es {factorial(n)}")
