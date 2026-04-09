@@ -1,0 +1,325 @@
+"""
+rpn.py
+
+Calculadora RPN (Reverse Polish Notation).
+
+Características:
+- Usa una pila para evaluar expresiones
+- Soporta enteros y reales
+- Operaciones básicas + - * /
+- Funciones matemáticas
+- Trigonometría en grados
+- Comandos de pila
+- Memorias 00–09
+- Manejo de errores con excepción RPNError
+"""
+
+import sys
+import math
+
+
+# -------------------------------------------------
+# Excepción personalizada para errores RPN
+# -------------------------------------------------
+class RPNError(Exception):
+    """Error específico del evaluador RPN"""
+    pass
+
+
+# -------------------------------------------------
+# Determina si un token es numérico
+# Soporta enteros y floats
+# -------------------------------------------------
+def is_number(token):
+    try:
+        float(token)
+        return True
+    except ValueError:
+        return False
+
+
+# -------------------------------------------------
+# Verifica que haya suficientes elementos
+# en la pila antes de operar
+# -------------------------------------------------
+def require(stack, n):
+    if len(stack) < n:
+        raise RPNError("Pila insuficiente para operar")
+
+
+# -------------------------------------------------
+# Extrae dos operandos desde la pila
+# Usado por operaciones binarias
+# -------------------------------------------------
+def pop2(stack):
+    require(stack, 2)
+
+    b = stack.pop()
+    a = stack.pop()
+
+    return a, b
+
+
+# -------------------------------------------------
+# Función principal de evaluación RPN
+# Recibe lista de tokens
+# -------------------------------------------------
+def evaluate(tokens):
+
+    # Pila principal
+    stack = []
+
+    # Memorias 00–09
+    mem = [0.0] * 10
+
+    # Constantes matemáticas
+    constants = {
+        "p": math.pi,  # pi
+        "e": math.e,   # e
+        "j": (1 + math.sqrt(5)) / 2  # phi
+    }
+
+    # Recorre cada token de la expresión
+    for token in tokens:
+
+        # ---------------------------------
+        # Si es número → apilar
+        # ---------------------------------
+        if is_number(token):
+            stack.append(float(token))
+            continue
+
+        # ---------------------------------
+        # Si es constante → apilar valor
+        # ---------------------------------
+        if token in constants:
+            stack.append(constants[token])
+            continue
+
+        # ---------------------------------
+        # Operaciones aritméticas básicas
+        # ---------------------------------
+        if token in "+-*/":
+
+            # Obtiene operandos
+            a, b = pop2(stack)
+
+            if token == "+":
+                stack.append(a + b)
+
+            elif token == "-":
+                stack.append(a - b)
+
+            elif token == "*":
+                stack.append(a * b)
+
+            elif token == "/":
+
+                # Validación división por cero
+                if b == 0:
+                    raise RPNError("División por cero")
+
+                stack.append(a / b)
+
+            continue
+
+        # ---------------------------------
+        # Comandos de manipulación de pila
+        # ---------------------------------
+
+        # dup → duplica el tope
+        if token == "dup":
+            require(stack, 1)
+            stack.append(stack[-1])
+            continue
+
+        # swap → intercambia los dos superiores
+        if token == "swap":
+            require(stack, 2)
+            stack[-1], stack[-2] = stack[-2], stack[-1]
+            continue
+
+        # drop → elimina el tope
+        if token == "drop":
+            require(stack, 1)
+            stack.pop()
+            continue
+
+        # clear → vacía completamente la pila
+        if token == "clear":
+            stack.clear()
+            continue
+
+        # ---------------------------------
+        # Funciones matemáticas unarias
+        # ---------------------------------
+        if token in {
+            "sqrt", "log", "ln",
+            "ex", "10x", "1/x",
+            "sin", "cos", "tg",
+            "asin", "acos", "atg",
+            "CHS"
+        }:
+
+            require(stack, 1)
+
+            x = stack.pop()
+
+            # Raíz cuadrada
+            if token == "sqrt":
+                stack.append(math.sqrt(x))
+
+            # Logaritmo base 10
+            elif token == "log":
+                stack.append(math.log10(x))
+
+            # Logaritmo natural
+            elif token == "ln":
+                stack.append(math.log(x))
+
+            # e^x
+            elif token == "ex":
+                stack.append(math.exp(x))
+
+            # 10^x
+            elif token == "10x":
+                stack.append(10 ** x)
+
+            # Inverso multiplicativo
+            elif token == "1/x":
+
+                if x == 0:
+                    raise RPNError("División por cero")
+
+                stack.append(1 / x)
+
+            # Trigonométricas (grados → radianes)
+            elif token == "sin":
+                stack.append(math.sin(math.radians(x)))
+
+            elif token == "cos":
+                stack.append(math.cos(math.radians(x)))
+
+            elif token == "tg":
+                stack.append(math.tan(math.radians(x)))
+
+            # Inversas trigonométricas
+            elif token == "asin":
+                stack.append(math.degrees(math.asin(x)))
+
+            elif token == "acos":
+                stack.append(math.degrees(math.acos(x)))
+
+            elif token == "atg":
+                stack.append(math.degrees(math.atan(x)))
+
+            # Change Sign
+            elif token == "CHS":
+                stack.append(-x)
+
+            continue
+
+        # ---------------------------------
+        # Potencia yx
+        # ---------------------------------
+        if token == "yx":
+
+            a, b = pop2(stack)
+
+            stack.append(a ** b)
+
+            continue
+
+        # ---------------------------------
+        # Manejo de memorias
+        # ---------------------------------
+
+        # STO → almacena valor
+        if token == "STO":
+
+            require(stack, 2)
+
+            idx = int(stack.pop())
+            val = stack.pop()
+
+            # Validación índice memoria
+            if not 0 <= idx <= 9:
+                raise RPNError("Memoria inválida")
+
+            mem[idx] = val
+
+            continue
+
+        # RCL → recupera valor
+        if token == "RCL":
+
+            require(stack, 1)
+
+            idx = int(stack.pop())
+
+            if not 0 <= idx <= 9:
+                raise RPNError("Memoria inválida")
+
+            stack.append(mem[idx])
+
+            continue
+
+        # ---------------------------------
+        # Si no coincide con nada → error
+        # ---------------------------------
+        raise RPNError(f"Token inválido: {token}")
+
+    # ---------------------------------
+    # Validación final:
+    # Debe quedar exactamente 1 valor
+    # ---------------------------------
+    if len(stack) != 1:
+        raise RPNError(
+            "La pila no terminó con un solo valor"
+        )
+
+    return stack[0]
+
+
+# -------------------------------------------------
+# Función principal
+# Permite ejecutar desde consola
+# -------------------------------------------------
+def main():
+
+    try:
+
+        # Si hay argumentos → usar esos
+        if len(sys.argv) > 1:
+            expr = " ".join(sys.argv[1:])
+
+        # Si no → leer desde input
+        else:
+            expr = input("Ingrese expresión RPN: ")
+
+        # Separar tokens
+        tokens = expr.split()
+
+        # Evaluar expresión
+        result = evaluate(tokens)
+
+        # Mostrar entero limpio si aplica
+        if result.is_integer():
+            print(int(result))
+        else:
+            print(result)
+
+    # Manejo explícito de errores RPN
+    except RPNError as e:
+        print("Error:", e)
+
+    # Captura errores inesperados
+    except Exception:
+        print("Error inesperado")
+
+
+# -------------------------------------------------
+# Punto de entrada del programa
+# -------------------------------------------------
+if __name__ == "__main__":
+    main()
